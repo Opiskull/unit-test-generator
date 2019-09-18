@@ -1,0 +1,40 @@
+using System;
+using System.Collections;
+using System.Linq;
+using System.Text;
+
+namespace HelloWorld.Services
+{
+    public class HelloService
+    {
+        private IBigMethod _bigMethod;
+        private IAnotherMethod _anotherMethod;
+
+        public HalloService(IBigMethod bigMethod, IAnotherMethod anotherMethod)
+        {
+            _bigMethod = bigMethod;
+            _anotherMethod = anotherMethod;
+        }
+
+        public void BigMethod()
+        {
+            Console.WriteLine(""Hello, World!"");
+        }
+
+        public void AnotherMethod()
+        {
+            Console.WriteLine(""Another"");
+        }
+
+        public async Task<int> BigIntMethod()
+        {
+            var result = await _bigMethod.GetAll();
+            return result;
+        }
+
+        private void Boom()
+        {
+            Console.WriteLine(""Boom"");
+        }
+    }
+}

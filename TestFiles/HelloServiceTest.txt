@@ -1,0 +1,32 @@
+using Xunit;
+using Moq;
+
+namespace HelloWorld.Services.Test
+{
+    public class HelloServiceTest
+    {
+        private readonly Mock<IBigMethod> _bigMethod = new Mock<IBigMethod>();
+        private readonly Mock<IAnotherMethod> _anotherMethod = new Mock<IAnotherMethod>();
+        private readonly HelloService _helloService;
+        public HelloServiceTest()
+        {
+            _helloService = new HelloServiceTest(_bigMethod.Object, _anotherMethod.Object);
+        }
+
+        [Fact]
+        public async Task BigIntMethodTest()
+        {
+            await Task.Completed;
+        }
+
+        [Fact]
+        public void BigMethodTest()
+        {
+        }
+
+        [Fact]
+        public void AnotherMethodTest()
+        {
+        }
+    }
+}
