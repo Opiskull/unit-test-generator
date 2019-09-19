@@ -25,11 +25,11 @@ namespace unit_test_generator
             CommandLine.Parser.Default.ParseArguments<Options>(args)
                 .WithParsed<Options>(opts =>
                 {
-                    var classParser = new ClassParser();
                     var fileContent = File.ReadAllText(opts.FileName);
 
-                    var testClass = classParser.Parse(fileContent);
-                    var output = TestFileGenerator.GenerateTestsFromTestFile(testClass).NormalizeWhitespace().ToString();
+                    var compilationUnitRoot = CSharpSyntaxTree.ParseText(fileContent).GetCompilationUnitRoot();
+
+                    var output = compilationUnitRoot.CreateTestFile().NormalizeWhitespace().ToString();
 
                     if (!string.IsNullOrEmpty(opts.OutputFileName))
                     {

@@ -2,6 +2,11 @@ namespace unit_test_generator
 {
     public static class StringExtensions
     {
+        public static string ToTestClass(this string classOrInterface)
+        {
+            return classOrInterface + "Test";
+        }
+
         public static string ToCamelCase(this string classOrInterface)
         {
             if (classOrInterface.StartsWith("I"))
