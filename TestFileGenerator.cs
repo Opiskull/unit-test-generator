@@ -12,19 +12,16 @@ namespace unit_test_generator
     {
         public static SyntaxNode GenerateTestsFromTestFile(TestFile testFile)
         {
-            return GenerateTestsFromTestFile(testFile.Namespace, testFile.ClassName, testFile.Dependencies, testFile.AsyncMethods, testFile.NonAsyncMethods);
+            return GenerateTestsFromTestFile(testFile.Namespace, testFile.ClassName, testFile.Dependencies, testFile.AsyncMethods, testFile.NonAsyncMethods, testFile.Usings);
         }
 
-        public static SyntaxNode GenerateTestsFromTestFile(string namespaceName, string className, string[] interfacesOrClasses, string[] asyncMethods, string[] nonAsyncMethods)
+        public static SyntaxNode GenerateTestsFromTestFile(string namespaceName, string className, string[] interfacesOrClasses, string[] asyncMethods, string[] nonAsyncMethods, string[] usings)
         {
+            var testUsings = usings.Append("Xunit").Append("Moq");
             return CompilationUnit()
                 .WithUsings(
                     List<UsingDirectiveSyntax>(
-                        new UsingDirectiveSyntax[]{
-                    UsingDirective(
-                        IdentifierName("Xunit")),
-                    UsingDirective(
-                        IdentifierName("Moq"))}))
+                        testUsings.Select(_ => UsingDirective(QualifiedName(_))).ToArray()))
                 .WithMembers(
                     SingletonList<MemberDeclarationSyntax>(
                         NamespaceDeclaration(

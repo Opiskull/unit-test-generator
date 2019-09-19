@@ -21,8 +21,15 @@ namespace unit_test_generator
                 Dependencies = GetInjectedDependencies(classSyntax),
                 AsyncMethods = GetAsyncMethodNames(classSyntax),
                 NonAsyncMethods = GetNonAsyncMethodNames(classSyntax),
-                Namespace = GetNamespace(namespaceSyntax)
+                Namespace = GetNamespace(namespaceSyntax),
+                Usings = GetUsings(compilationUnitRoot)
             };
+        }
+
+        private string[] GetUsings(CompilationUnitSyntax syntax)
+        {
+            var usings = syntax.DescendantNodes().OfType<UsingDirectiveSyntax>();
+            return usings.Select(_ => _.Name.ToString()).ToArray();
         }
 
         private string[] GetInjectedDependencies(ClassDeclarationSyntax syntax)

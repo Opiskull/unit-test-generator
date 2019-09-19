@@ -7,5 +7,6 @@ namespace unit_test_generator
         public string[] AsyncMethods { get; set; }
         public string[] NonAsyncMethods { get; set; }
         public string[] Dependencies { get; set; }
+        public string[] Usings { get; set; }
     }
 }
