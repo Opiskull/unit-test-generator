@@ -2,6 +2,11 @@ namespace unit_test_generator
 {
     public static class StringExtensions
     {
+        public static string ToTestMethodName(this string method)
+        {
+            return "ShouldTest" + method;
+        }
+
         public static string ToTestClass(this string classOrInterface)
         {
             return classOrInterface + "Test";
@@ -9,7 +14,8 @@ namespace unit_test_generator
 
         public static string ToCamelCase(this string classOrInterface)
         {
-            if (classOrInterface.StartsWith("I"))
+            var secondChar = classOrInterface.Substring(1, 1);
+            if (classOrInterface.StartsWith("I") && secondChar == secondChar.ToUpper())
             {
                 classOrInterface = classOrInterface.Substring(1);
             }

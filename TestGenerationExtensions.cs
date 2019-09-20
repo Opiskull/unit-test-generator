@@ -50,7 +50,7 @@ namespace unit_test_generator
             return
                 MethodDeclaration(
                     IdentifierName("Task"),
-                    Identifier(methodName + "Test"))
+                    Identifier(methodName.ToTestMethodName()))
                 .WithModifiers(
                     TokenList(
                         new[]{
@@ -80,7 +80,7 @@ namespace unit_test_generator
                 MethodDeclaration(
                     PredefinedType(
                         Token(SyntaxKind.VoidKeyword)),
-                    Identifier(methodName + "Test"))
+                    Identifier(methodName.ToTestMethodName()))
                 .WithModifiers(
                     TokenList(
                         Token(SyntaxKind.PublicKeyword)))
@@ -135,7 +135,7 @@ namespace unit_test_generator
             var parameters = constructor.DescendantNodes().OfType<ParameterListSyntax>().FirstOrDefault().Parameters;
             return
             ConstructorDeclaration(
-                Identifier(className + "Test"))
+                Identifier(className.ToTestClass()))
             .WithModifiers(
                 TokenList(
                     Token(SyntaxKind.PublicKeyword)))
@@ -199,21 +199,22 @@ namespace unit_test_generator
 
         public static ClassDeclarationSyntax CreateTestClass(this ClassDeclarationSyntax classSyntax)
         {
-            var className = classSyntax.Identifier.Text;
-
-            var methods = classSyntax.DescendantNodes().OfType<MethodDeclarationSyntax>().Where(_ => _.Modifiers.Any(SyntaxKind.PublicKeyword));
+            var memberList = new List<MemberDeclarationSyntax>();
 
             var constructor = classSyntax.DescendantNodes().OfType<ConstructorDeclarationSyntax>().FirstOrDefault();
             var parameters = constructor.DescendantNodes().OfType<ParameterListSyntax>().FirstOrDefault().Parameters;
 
-            var memberList = new List<MemberDeclarationSyntax>();
             memberList.AddRange(parameters.Select(_ => _.Type.CreateMockAsField()));
             memberList.Add(classSyntax.CreateMemberOfClass());
             memberList.Add(classSyntax.CreateConstructor());
+
+            var methods = classSyntax.DescendantNodes().OfType<MethodDeclarationSyntax>().Where(_ => _.Modifiers.Any(SyntaxKind.PublicKeyword));
             memberList.AddRange(methods.Where(_ => _.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateAsyncTestMethod()));
             memberList.AddRange(methods.Where(_ => !_.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateVoidTestMethod()));
 
-            return ClassDeclaration(className + "Test")
+            var className = classSyntax.Identifier.Text;
+
+            return ClassDeclaration(className.ToTestClass())
                 .WithModifiers(
                     TokenList(
                         Token(SyntaxKind.PublicKeyword)))
