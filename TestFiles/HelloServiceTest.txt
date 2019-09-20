@@ -10,7 +10,7 @@ namespace HelloWorld.Services.Test
         private readonly HelloService _helloService;
         public HelloServiceTest()
         {
-            _helloService = new HelloServiceTest(_bigMethod.Object, _anotherMethod.Object);
+            _helloService = new HelloService(_bigMethod.Object, _anotherMethod.Object);
         }
 
         [Fact]

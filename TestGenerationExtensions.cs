@@ -9,6 +9,12 @@ namespace unit_test_generator
 {
     public static class TestGenerationExtensions
     {
+        public static IEnumerable<MemberAccessExpressionSyntax> SelectExpressionsWithName(this MethodDeclarationSyntax syntax, IEnumerable<FieldDeclarationSyntax> members)
+        {
+            var expressions = syntax.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+            return expressions.Where(_ => members.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text));
+        }
+
         public static NameSyntax QualifiedName(string dotedName)
         {
             return GetQualifiedName(new List<string>(dotedName.Split(".").Reverse()));
@@ -44,9 +50,22 @@ namespace unit_test_generator
                                 SingletonList<MemberDeclarationSyntax>(classSyntax.CreateTestClass()))));
         }
 
-        public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax method)
+        public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
         {
             var methodName = method.Identifier.Text;
+
+            var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
+            var expressions = method.SelectExpressionsWithName(fields);
+            var mockSetups = expressions.Select(_ => _.CreateMockSetup(fields));
+
+            var statements = new List<StatementSyntax>(mockSetups){
+            ExpressionStatement(
+                AwaitExpression(InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(classSyntax.Identifier.Text.ToMemberName()),
+                        IdentifierName(methodName)))))
+            };
             return
                 MethodDeclaration(
                     IdentifierName("Task"),
@@ -64,18 +83,52 @@ namespace unit_test_generator
                                     IdentifierName("Fact"))))))
                 .WithBody(
                     Block(
-                        SingletonList<StatementSyntax>(
-                            ExpressionStatement(
-                                AwaitExpression(
-                                    MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName("Task"),
-                                        IdentifierName("Completed")))))));
+                        statements
+                    ));
         }
 
-        public static MethodDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax method)
+        public static ExpressionStatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields)
+        {
+            var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
+            var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
+            var memberType = (field.Declaration.Type as IdentifierNameSyntax).Identifier.Text;
+            var methodName = memberAccessExpression.Name.Identifier.Text;
+            return ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(memberType.ToMemberName()),
+                            IdentifierName("Setup")))
+                    .WithArgumentList(
+                        ArgumentList(
+                            SingletonSeparatedList<ArgumentSyntax>(
+                                Argument(
+                                    SimpleLambdaExpression(
+                                        Parameter(
+                                            Identifier("_")),
+                                        InvocationExpression(
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName("_"),
+                                                IdentifierName(methodName)))))))));
+        }
+
+        public static MethodDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
         {
             var methodName = method.Identifier.Text;
+
+            var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
+            var expressions = method.SelectExpressionsWithName(fields);
+            var mockSetups = expressions.Select(_ => _.CreateMockSetup(fields));
+
+            var statements = new List<StatementSyntax>(mockSetups){
+            ExpressionStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(classSyntax.Identifier.Text.ToMemberName()),
+                        IdentifierName(methodName))))
+            };
             return
                 MethodDeclaration(
                     PredefinedType(
@@ -91,7 +144,7 @@ namespace unit_test_generator
                                 Attribute(
                                     IdentifierName("Fact"))))))
                 .WithBody(
-                    Block());
+                    Block(statements));
         }
 
         public static FieldDeclarationSyntax CreateMockAsField(this TypeSyntax type)
@@ -209,8 +262,8 @@ namespace unit_test_generator
             memberList.Add(classSyntax.CreateConstructor());
 
             var methods = classSyntax.DescendantNodes().OfType<MethodDeclarationSyntax>().Where(_ => _.Modifiers.Any(SyntaxKind.PublicKeyword));
-            memberList.AddRange(methods.Where(_ => _.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateAsyncTestMethod()));
-            memberList.AddRange(methods.Where(_ => !_.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateVoidTestMethod()));
+            memberList.AddRange(methods.Where(_ => _.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateAsyncTestMethod(classSyntax)));
+            memberList.AddRange(methods.Where(_ => !_.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateVoidTestMethod(classSyntax)));
 
             var className = classSyntax.Identifier.Text;
 

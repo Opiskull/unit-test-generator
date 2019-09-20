@@ -22,7 +22,8 @@ namespace HelloWorld.Services
         }
 
         public void AnotherMethod()
-        {
+        {   
+            var blub = _bigMethod.Bla();
             Console.WriteLine("Another");
         }
 
