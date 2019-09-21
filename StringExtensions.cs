@@ -2,6 +2,11 @@ namespace unit_test_generator
 {
     public static class StringExtensions
     {
+        public static string ToTestNamespace(this string namespaceName)
+        {
+            return namespaceName + ".Test";
+        }
+
         public static string ToTestMethodName(this string method)
         {
             return "ShouldTest" + method;
