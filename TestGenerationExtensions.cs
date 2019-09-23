@@ -9,6 +9,16 @@ namespace unit_test_generator
 {
     public static class TestGenerationExtensions
     {
+        public static string GetName(this MethodDeclarationSyntax method)
+        {
+            return method.Identifier.Text;
+        }
+
+        public static string GetTypeName(this TypeSyntax type)
+        {
+            return (type as IdentifierNameSyntax).Identifier.Text;
+        }
+
         public static SyntaxNode CreateTestFile(this CompilationUnitSyntax compilationUnit)
         {
             var namespaceName = compilationUnit.Members.OfType<NamespaceDeclarationSyntax>().FirstOrDefault().Name.ToString();
@@ -36,7 +46,7 @@ namespace unit_test_generator
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"await {className.ToMemberName()}.{methodName}();")
             };
-            var methodDeclaration = (ParseMemberDeclaration($"[Fact]public async Task {methodName.ToTestMethodName()}(){{}}") as MethodDeclarationSyntax);
+            var methodDeclaration = (ParseMemberDeclaration($"[Fact]public async Task {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
 
@@ -54,7 +64,7 @@ namespace unit_test_generator
         {
             var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
             var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
-            var memberType = (field.Declaration.Type as IdentifierNameSyntax).Identifier.Text;
+            var memberType = field.Declaration.Type.GetTypeName();
             var methodName = memberAccessExpression.Name.Identifier.Text;
             return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}());");
         }
@@ -66,13 +76,13 @@ namespace unit_test_generator
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"{classSyntax.Identifier.Text.ToMemberName()}.{methodName}();")
             };
-            var methodDeclaration = (ParseMemberDeclaration($"[Fact]public void {methodName.ToTestMethodName()}(){{}}") as MethodDeclarationSyntax);
+            var methodDeclaration = (ParseMemberDeclaration($"[Fact]public void {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
 
         public static MemberDeclarationSyntax CreateMockAsField(this TypeSyntax type)
         {
-            var typeName = (type as IdentifierNameSyntax).Identifier.Text;
+            var typeName = type.GetTypeName();
             return ParseMemberDeclaration($"private readonly Mock<{typeName}> {typeName.ToMemberName()} = new Mock<{typeName}>();");
         }
 
@@ -81,7 +91,7 @@ namespace unit_test_generator
             var className = classDeclaration.Identifier.Text;
             var constructor = classDeclaration.Members.OfType<ConstructorDeclarationSyntax>().FirstOrDefault();
             var parameters = constructor.ParameterList.Parameters;
-            var arguments = parameters.Select(_ => (_.Type as IdentifierNameSyntax).Identifier.Text.ToMemberName() + ".Object");
+            var arguments = parameters.Select(_ => _.Type.GetTypeName().ToMemberName() + ".Object");
 
             return ParseMemberDeclaration($"public {className.ToTestClass()}() {{ {className.ToMemberName()} = new {className}({string.Join(", ", arguments)}); }}");
         }
