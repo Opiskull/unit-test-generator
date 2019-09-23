@@ -1,7 +1,11 @@
+using System;
+using System.Collections;
+using System.Linq;
+using System.Text;
 using Xunit;
 using Moq;
 
-namespace HelloWorld.Services.Test
+namespace HelloWorldTest.Services
 {
     public class HelloServiceTest
     {
@@ -14,19 +18,23 @@ namespace HelloWorld.Services.Test
         }
 
         [Fact]
-        public async Task BigIntMethodTest()
+        public async Task ShouldTestBigIntMethod()
         {
-            await Task.Completed;
+            _bigMethod.Setup(_ => _.GetAll());
+            await _helloService.BigIntMethod();
         }
 
         [Fact]
-        public void BigMethodTest()
+        public void ShouldTestBigMethod()
         {
+            _helloService.BigMethod();
         }
 
         [Fact]
-        public void AnotherMethodTest()
+        public void ShouldTestAnotherMethod()
         {
+            _bigMethod.Setup(_ => _.Bla());
+            _helloService.AnotherMethod();
         }
     }
 }

@@ -4,7 +4,9 @@ namespace unit_test_generator
     {
         public static string ToTestNamespace(this string namespaceName)
         {
-            return namespaceName + ".Test";
+            var namespaces = namespaceName.Split(".");
+            namespaces[0] = namespaces[0] + "Test";
+            return string.Join(".", namespaces);
         }
 
         public static string ToTestMethodName(this string method)
