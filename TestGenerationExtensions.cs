@@ -9,11 +9,6 @@ namespace unit_test_generator
 {
     public static class TestGenerationExtensions
     {
-        public static string GetName(this MethodDeclarationSyntax method)
-        {
-            return method.Identifier.Text;
-        }
-
         public static string GetTypeName(this TypeSyntax type)
         {
             return (type as IdentifierNameSyntax).Identifier.Text;
