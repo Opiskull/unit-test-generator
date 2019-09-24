@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -9,6 +10,8 @@ namespace unit_test_generator
 {
     public static class TestGenerationExtensions
     {
+        public static string NewLineAnnotation = "NewLine";
+
         public static string GetTypeName(this TypeSyntax type)
         {
             return (type as IdentifierNameSyntax).Identifier.Text;
@@ -41,6 +44,7 @@ namespace unit_test_generator
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"await {className.ToMemberName()}.{methodName}();")
             };
+            statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public async Task {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
@@ -53,6 +57,26 @@ namespace unit_test_generator
                 // Select mockable expressions
                 .Where(_ => fields.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text))
                 .Select(_ => _.CreateMockSetup(fields));
+        }
+
+        public static IEnumerable<StatementSyntax> CreateVerifyAllForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
+        {
+            var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
+            var expressions = method.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+            return expressions
+                // Select mockable expressions
+                .Where(_ => fields.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text))
+                .Select(_ => _.CreateVerifyAll(fields))
+                .Distinct()
+                .Select(_ => ParseStatement(_));
+        }
+
+        private static string CreateVerifyAll(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields)
+        {
+            var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
+            var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
+            var memberType = field.Declaration.Type.GetTypeName();
+            return $"{memberType.ToMemberName()}.VerifyAll();";
         }
 
         public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields)
@@ -71,6 +95,7 @@ namespace unit_test_generator
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"{classSyntax.Identifier.Text.ToMemberName()}.{methodName}();")
             };
+            statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public void {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
@@ -94,7 +119,8 @@ namespace unit_test_generator
         public static MemberDeclarationSyntax CreateMemberOfClass(this ClassDeclarationSyntax classType)
         {
             var className = classType.Identifier.Text;
-            return ParseMemberDeclaration($"private readonly {className} {className.ToMemberName()};");
+            return ParseMemberDeclaration($"private readonly {className} {className.ToMemberName()};")
+                .WithAdditionalAnnotations(new SyntaxAnnotation(NewLineAnnotation));
         }
 
         public static ClassDeclarationSyntax CreateTestClass(this ClassDeclarationSyntax classSyntax)
