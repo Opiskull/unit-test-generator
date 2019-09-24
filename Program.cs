@@ -31,8 +31,7 @@ namespace unit_test_generator
 
                     if (!string.IsNullOrEmpty(opts.OutputFileName))
                     {
-                        var directory = Path.GetDirectoryName(opts.OutputFileName);
-                        Directory.CreateDirectory(directory);
+                        Directory.CreateDirectory(Path.GetDirectoryName(opts.OutputFileName));
                         File.WriteAllText(opts.OutputFileName, output);
                     }
                     else
