@@ -23,7 +23,7 @@ namespace unit_test_generator
             var usings = compilationUnit.Usings.Select(_ => _.Name.ToString());
             var classSyntax = compilationUnit.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
 
-            var testUsings = usings.Append("Xunit").Append("Moq").Append("FluentAssertions");
+            var testUsings = usings.Append("Xunit").Append("Moq").Append("FluentAssertions").Append(namespaceName);
             return CompilationUnit()
                 .WithUsings(
                     List(
