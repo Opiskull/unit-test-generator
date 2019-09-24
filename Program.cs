@@ -26,13 +26,13 @@ namespace unit_test_generator
                 .WithParsed<Options>(opts =>
                 {
                     var fileContent = File.ReadAllText(opts.FileName);
-
                     var compilationUnitRoot = CSharpSyntaxTree.ParseText(fileContent).GetCompilationUnitRoot();
-
                     var output = compilationUnitRoot.CreateTestFile().NormalizeWhitespace().ToString();
 
                     if (!string.IsNullOrEmpty(opts.OutputFileName))
                     {
+                        var directory = Path.GetDirectoryName(opts.OutputFileName);
+                        Directory.CreateDirectory(directory);
                         File.WriteAllText(opts.OutputFileName, output);
                     }
                     else
