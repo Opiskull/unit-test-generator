@@ -1,16 +1,14 @@
 using System;
-using System.Collections;
-using System.Linq;
-using System.Text;
+using System.Threading.Tasks;
 
-namespace HelloWorld.Services
+namespace MyProject.Services
 {
     public class HelloService
     {
         private IBigMethod _bigMethod;
         private IAnotherMethod _anotherMethod;
 
-        public HalloService(IBigMethod bigMethod, IAnotherMethod anotherMethod)
+        public HelloService(IBigMethod bigMethod, IAnotherMethod anotherMethod)
         {
             _bigMethod = bigMethod;
             _anotherMethod = anotherMethod;
@@ -19,18 +17,24 @@ namespace HelloWorld.Services
         public void BigMethod()
         {
             Console.WriteLine("Hello, World!");
+            Boom();
         }
 
-        public void AnotherMethod()
-        {   
-            var blub = _bigMethod.Bla();
-            var hu = _bigMethod.Blub();
-            Console.WriteLine("Another");
+        public string AnotherMethod()
+        {
+            var result = _bigMethod.BigResult();
+            _bigMethod.Hallo();
+            if (_anotherMethod.IsBigResult(result))
+            {
+                return result;
+            }
+            Console.WriteLine(result);
+            return "Big File";
         }
 
         public async Task<int> BigIntMethod()
         {
-            var result = await _bigMethod.GetAll();
+            var result = await _bigMethod.GetAllAsync();
             return result;
         }
 

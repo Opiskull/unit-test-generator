@@ -1,11 +1,11 @@
-namespace unit_test_generator
+namespace Opiskull.UnitTestGenerator
 {
     public static class StringExtensions
     {
         public static string ToTestNamespace(this string namespaceName)
         {
             var namespaces = namespaceName.Split(".");
-            namespaces[0] = namespaces[0] + "Test";
+            namespaces[0] = namespaces[0] + ".Test";
             return string.Join(".", namespaces);
         }
 

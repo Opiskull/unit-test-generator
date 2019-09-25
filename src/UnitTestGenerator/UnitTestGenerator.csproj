@@ -8,6 +8,7 @@
     <ToolCommandName>unit-test-generator</ToolCommandName>
     <RootNamespace>unit_test_generator</RootNamespace>
     <PackageOutputPath>./nupkg</PackageOutputPath>
+    <PackageId>Opiskull.UnitTestGenerator</PackageId>
 
     <VersionPrefix>1.1.0</VersionPrefix>
   </PropertyGroup>

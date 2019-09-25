@@ -4,7 +4,7 @@ using CommandLine;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace unit_test_generator
+namespace Opiskull.UnitTestGenerator
 {
     class Program
     {
@@ -16,7 +16,7 @@ namespace unit_test_generator
             [Value(0, Required = true, HelpText = "Input filename.")]
             public string FileName { get; set; }
 
-            [Option("out", Required = false, HelpText = "Output filename.")]
+            [Option('o', "out", Required = false, HelpText = "Output filename.")]
             public string OutputFileName { get; set; }
         }
 

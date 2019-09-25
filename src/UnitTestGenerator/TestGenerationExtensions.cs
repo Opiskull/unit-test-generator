@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace unit_test_generator
+namespace Opiskull.UnitTestGenerator
 {
     public static class TestGenerationExtensions
     {
