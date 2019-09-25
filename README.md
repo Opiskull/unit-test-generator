@@ -24,16 +24,16 @@ The following things are currently supported:
 ### Install
 
 1. Download the nuget package from releases
-2. `dotnet tool install unit-test-generator --add-source ./download-folder -g`
+2. `dotnet tool install Opiskull.UnitTestGenerator --add-source ./download-folder -g`
 
 ### Update
 
 1. Download the nuget package from releases
-2. `dotnet tool update unit-test-generator --add-source ./download-folder -g`
+2. `dotnet tool update Opiskull.UnitTestGenerator --add-source ./download-folder -g`
 
 ### Uninstall
 
-1. `dotnet tool uninstall unit-test-generator -g`
+1. `dotnet tool uninstall Opiskull.UnitTestGenerator -g`
 
 ## How to use unit-test-generator
 
@@ -41,4 +41,4 @@ You can start the tool with `unit-test-generator ./InputClassFile.cs`.
 
 After you have executed the tool you can read the generated file and copy it to your tests folder.
 
-With `unit-test-generator ./Inputer/InputClassFile.cs --out ./Inputer.Test/InputClassFileTest.cs` you can generate the file directly in your test project.
+With `unit-test-generator ./MyProject/Services/HelloService.cs --out ./MyProject.Test/Services/HelloServiceTest.cs` you can generate the file directly in your test project.
