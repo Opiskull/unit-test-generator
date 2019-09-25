@@ -11,14 +11,14 @@ namespace Opiskull.UnitTestGenerator
             return new NewLineRewriter().Visit(syntax);
         }
 
-        public static T AddTrailingNewLine<T>(this T syntax) where T : SyntaxNode
+        public static T AddTrailingNewLine<T>(this T syntax, bool add = true) where T : SyntaxNode
         {
-            return syntax.WithAdditionalAnnotations(TrailingNewLineAnnotation);
+            return add ? syntax.WithAdditionalAnnotations(TrailingNewLineAnnotation) : syntax;
         }
 
-        public static T AddLeadingNewLine<T>(this T syntax) where T : SyntaxNode
+        public static T AddLeadingNewLine<T>(this T syntax, bool add = true) where T : SyntaxNode
         {
-            return syntax.WithAdditionalAnnotations(LeadingNewLineAnnotation);
+            return add ? syntax.WithAdditionalAnnotations(LeadingNewLineAnnotation) : syntax;
         }
 
         public static string LeadingNewLine = "LeadingNewLine";

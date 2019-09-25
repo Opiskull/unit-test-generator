@@ -42,9 +42,9 @@ namespace Opiskull.UnitTestGenerator
             var mockSetups = method.CreateSetupsForMocks(classSyntax);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"await {className.ToMemberName()}.{methodName}();")
-                    .AddLeadingNewLine()
-                    .AddTrailingNewLine()
-        };
+                    .AddLeadingNewLine(mockSetups.Any())
+                    .AddTrailingNewLine(mockSetups.Any())
+            };
             statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public async Task {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
@@ -95,8 +95,8 @@ namespace Opiskull.UnitTestGenerator
             var mockSetups = method.CreateSetupsForMocks(classSyntax);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"{classSyntax.Identifier.Text.ToMemberName()}.{methodName}();")
-                    .AddTrailingNewLine()
-                    .AddLeadingNewLine()
+                    .AddTrailingNewLine(mockSetups.Any())
+                    .AddLeadingNewLine(mockSetups.Any())
             };
             statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public void {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
