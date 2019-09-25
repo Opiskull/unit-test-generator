@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -39,7 +38,7 @@ namespace Opiskull.UnitTestGenerator
         {
             var methodName = method.Identifier.Text;
             var className = classSyntax.Identifier.Text;
-            var mockSetups = method.CreateSetupsForMocks(classSyntax);
+            var mockSetups = method.CreateSetupsForMocks(classSyntax, ".Returns(Task.CompletedTask)");
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"await {className.ToMemberName()}.{methodName}();")
                     .AddLeadingNewLine(mockSetups.Any())
@@ -50,14 +49,14 @@ namespace Opiskull.UnitTestGenerator
             return methodDeclaration.WithBody(Block(statements));
         }
 
-        public static IEnumerable<StatementSyntax> CreateSetupsForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
+        public static IEnumerable<StatementSyntax> CreateSetupsForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, string returnValue = "")
         {
             var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
             var expressions = method.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
             return expressions
                 // Select mockable expressions
                 .Where(_ => fields.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text))
-                .Select(_ => _.CreateMockSetup(fields));
+                .Select(_ => _.CreateMockSetup(fields, returnValue));
         }
 
         public static IEnumerable<StatementSyntax> CreateVerifyAllForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
@@ -80,13 +79,13 @@ namespace Opiskull.UnitTestGenerator
             return $"{memberType.ToMemberName()}.VerifyAll();";
         }
 
-        public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields)
+        public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields, string returnValue = "")
         {
             var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
             var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
             var memberType = field.Declaration.Type.GetTypeName();
             var methodName = memberAccessExpression.Name.Identifier.Text;
-            return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}());");
+            return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}()){returnValue};");
         }
 
         public static MemberDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
