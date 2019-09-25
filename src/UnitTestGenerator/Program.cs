@@ -6,37 +6,25 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Opiskull.UnitTestGenerator
 {
-    class Program
+    public class Program
     {
-        public class Options
-        {
-            [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
-            public bool Verbose { get; set; }
-
-            [Value(0, Required = true, HelpText = "Input filename.")]
-            public string FileName { get; set; }
-
-            [Option('o', "out", Required = false, HelpText = "Output filename.")]
-            public string OutputFileName { get; set; }
-        }
-
         static void Main(string[] args)
         {
-            CommandLine.Parser.Default.ParseArguments<Options>(args)
-                .WithParsed<Options>(opts =>
+            Parser.Default.ParseArguments<Options>(args)
+                .WithParsed(opts =>
                 {
                     var fileContent = File.ReadAllText(opts.FileName);
                     var compilationUnitRoot = CSharpSyntaxTree.ParseText(fileContent).GetCompilationUnitRoot();
-                    var output = compilationUnitRoot.CreateTestFile().NormalizeWhitespace().ToString();
+                    var testFileContent = compilationUnitRoot.CreateTestFile().ToString();
 
                     if (!string.IsNullOrEmpty(opts.OutputFileName))
                     {
                         Directory.CreateDirectory(Path.GetDirectoryName(opts.OutputFileName));
-                        File.WriteAllText(opts.OutputFileName, output);
+                        File.WriteAllText(opts.OutputFileName, testFileContent);
                     }
                     else
                     {
-                        Console.WriteLine(output);
+                        Console.WriteLine(testFileContent);
                     }
                 });
         }

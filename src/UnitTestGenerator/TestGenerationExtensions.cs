@@ -10,8 +10,6 @@ namespace Opiskull.UnitTestGenerator
 {
     public static class TestGenerationExtensions
     {
-        public static string NewLineAnnotation = "NewLine";
-
         public static string GetTypeName(this TypeSyntax type)
         {
             return (type as IdentifierNameSyntax).Identifier.Text;
@@ -20,20 +18,21 @@ namespace Opiskull.UnitTestGenerator
         public static SyntaxNode CreateTestFile(this CompilationUnitSyntax compilationUnit)
         {
             var namespaceName = compilationUnit.Members.OfType<NamespaceDeclarationSyntax>().FirstOrDefault().Name.ToString();
-            var usings = compilationUnit.Usings.Select(_ => _.Name.ToString());
+            var usings = new List<string>(compilationUnit.Usings.Select(_ => _.Name.ToString()));
             var classSyntax = compilationUnit.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
 
-            var testUsings = usings.Append("Xunit").Append("Moq").Append("FluentAssertions").Append(namespaceName);
+            usings.AddRange(new[] { "Xunit", "Moq", "FluentAssertions", namespaceName });
             return CompilationUnit()
                 .WithUsings(
                     List(
-                        testUsings.Select(_ => UsingDirective(ParseName(_))).ToArray()))
+                        usings.Select(_ => UsingDirective(ParseName(_))).ToArray()))
                 .WithMembers(
                     SingletonList<MemberDeclarationSyntax>(
                         NamespaceDeclaration(
                             ParseName(namespaceName.ToTestNamespace()))
                             .WithMembers(
-                                SingletonList<MemberDeclarationSyntax>(classSyntax.CreateTestClass()))));
+                                SingletonList<MemberDeclarationSyntax>(classSyntax.CreateTestClass()))))
+                .ApplyFormat();
         }
 
         public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
@@ -43,7 +42,9 @@ namespace Opiskull.UnitTestGenerator
             var mockSetups = method.CreateSetupsForMocks(classSyntax);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"await {className.ToMemberName()}.{methodName}();")
-            };
+                    .AddLeadingNewLine()
+                    .AddTrailingNewLine()
+        };
             statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public async Task {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
@@ -94,6 +95,8 @@ namespace Opiskull.UnitTestGenerator
             var mockSetups = method.CreateSetupsForMocks(classSyntax);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"{classSyntax.Identifier.Text.ToMemberName()}.{methodName}();")
+                    .AddTrailingNewLine()
+                    .AddLeadingNewLine()
             };
             statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public void {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
@@ -113,14 +116,14 @@ namespace Opiskull.UnitTestGenerator
             var parameters = constructor.ParameterList.Parameters;
             var arguments = parameters.Select(_ => _.Type.GetTypeName().ToMemberName() + ".Object");
 
-            return ParseMemberDeclaration($"public {className.ToTestClass()}() {{ {className.ToMemberName()} = new {className}({string.Join(", ", arguments)}); }}");
+            return ParseMemberDeclaration($"public {className.ToTestClass()}() {{ {className.ToMemberName()} = new {className}({string.Join(", ", arguments)}); }}")
+                .AddLeadingNewLine();
         }
 
         public static MemberDeclarationSyntax CreateMemberOfClass(this ClassDeclarationSyntax classType)
         {
             var className = classType.Identifier.Text;
-            return ParseMemberDeclaration($"private readonly {className} {className.ToMemberName()};")
-                .WithAdditionalAnnotations(new SyntaxAnnotation(NewLineAnnotation));
+            return ParseMemberDeclaration($"private readonly {className} {className.ToMemberName()};");
         }
 
         public static ClassDeclarationSyntax CreateTestClass(this ClassDeclarationSyntax classSyntax)
