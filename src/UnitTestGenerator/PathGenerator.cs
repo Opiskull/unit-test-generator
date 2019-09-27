@@ -13,7 +13,7 @@ namespace Opiskull.UnitTestGenerator
             _fileSystem = fileSystem;
         }
 
-        public string FindProjectFileUpwards(string filePath)
+        public string FindProjectFile(string filePath)
         {
             var parent = _fileSystem.Path.GetDirectoryName(filePath);
             var files = _fileSystem.Directory.GetFiles(parent, "*.csproj");
@@ -22,17 +22,18 @@ namespace Opiskull.UnitTestGenerator
             {
                 throw new FileNotFoundException();
             }
+
             if (files.Length == 1)
             {
                 return _fileSystem.Path.GetFullPath(files.First());
             }
             else
             {
-                return FindProjectFileUpwards(parent);
+                return FindProjectFile(parent);
             }
         }
 
-        public string FindStartDirectory(string filePath)
+        private string FindStartDirectory(string filePath)
         {
             var parent = _fileSystem.Path.GetDirectoryName(filePath);
             if (parent == _fileSystem.Path.GetPathRoot(parent))

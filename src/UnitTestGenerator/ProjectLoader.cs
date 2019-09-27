@@ -9,9 +9,18 @@ namespace Opiskull.UnitTestGenerator
 {
     public class ProjectLoader
     {
-        public static async Task<SemanticModel> LoadAsync(string projectPath, string filePath)
+        private readonly PathGenerator _pathGenerator;
+
+        public ProjectLoader(PathGenerator pathGenerator)
+        {
+            _pathGenerator = pathGenerator;
+        }
+
+        public async Task<SemanticModel> LoadSemanticModelAsync(string filePath)
         {
             AnalyzerManager manager = new AnalyzerManager();
+            var projectPath = _pathGenerator.FindProjectFile(filePath);
+
             ProjectAnalyzer analyzer = manager.GetProject(projectPath);
             AdhocWorkspace workspace = analyzer.GetWorkspace();
 

@@ -14,18 +14,15 @@ namespace Opiskull.UnitTestGenerator
         static void Main(string[] args)
         {
             Parser.Default.ParseArguments<Options>(args)
-                .WithParsed(opts =>
+                .WithParsed(async (opts) =>
                 {
                     var fileSystem = new FileSystem();
+                    var pathGenerator = new PathGenerator(fileSystem);
+
                     var filePath = fileSystem.Path.GetFullPath(opts.FileName);
-                    var result = new PathGenerator(fileSystem).FindProjectFileUpwards(opts.FileName);
+                    var model = await new ProjectLoader(pathGenerator).LoadSemanticModelAsync(filePath);
 
-                    var model = ProjectLoader.LoadAsync(result, filePath).Result;
-
-                    var methodSyntax = model.SyntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>().ElementAt(1);
-                    var methodSymbol = model.GetDeclaredSymbol(methodSyntax);
-                    var compilationUnitRoot = model.SyntaxTree.GetCompilationUnitRoot();
-                    var testFileContent = compilationUnitRoot.CreateTestFile().ToString();
+                    var testFileContent = new TestFileGenerator(model).CreateTestFile();
 
                     if (!string.IsNullOrEmpty(opts.OutputFileName))
                     {
