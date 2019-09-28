@@ -8,6 +8,9 @@ This is where unit-test-generator comes into play! It takes a class and generate
 
 The following things are currently supported:
 
+- Files
+  - TestFile is directly generated in your test project `MyProject.Test`
+    example: `MyProject/Services/HelloService.cs` generates `MyProject.Test/Services/HelloServiceTest.cs`
 - Mocks
   - Create private Mock instances from construtor injected dependencies and give them meaningfull names (IBigService => \_bigService)
 - Test Methods
@@ -41,4 +44,22 @@ You can start the tool with `unit-test-generator ./InputClassFile.cs`.
 
 After you have executed the tool you can read the generated file and copy it to your tests folder.
 
-With `unit-test-generator ./MyProject/Services/HelloService.cs --out ./MyProject.Test/Services/HelloServiceTest.cs` you can generate the file directly in your test project.
+With `unit-test-generator ./MyProject/Services/HelloService.cs` you can generate the file directly in your test project.
+
+## The following commands are supported
+
+```
+-v, --verbose Set output to verbose messages.
+
+-s, --skip Skip creation of output file.
+
+-o, --overwrite Overwrite output file.
+
+--help Display this help screen.
+
+--version Display version information.
+
+value pos. 0 Required. Input filename.
+
+value pos. 1 Output filename.
+```
