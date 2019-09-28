@@ -91,7 +91,7 @@ namespace Opiskull.UnitTestGenerator
             return $".Returns({returnType.ToMockedValue()})";
         }
 
-        public static MethodDeclarationSyntax CreateTestMethod(this MethodDeclarationSyntax methodDeclarationSyntax, ClassDeclarationSyntax classSyntax, SemanticModel model)
+        public static MethodDeclarationSyntax CreateTestMethod(this MethodDeclarationSyntax methodDeclarationSyntax, SemanticModel model)
         {
             var method = model.GetDeclaredSymbol(methodDeclarationSyntax);
             var methodName = method.Name;
@@ -194,7 +194,7 @@ namespace Opiskull.UnitTestGenerator
             memberList.Add(classSyntax.CreateConstructor());
 
             var methods = classSyntax.Members.OfType<MethodDeclarationSyntax>().Where(_ => _.Modifiers.Any(SyntaxKind.PublicKeyword));
-            memberList.AddRange(methods.Select(_ => CreateTestMethod(_, classSyntax, semanticModel)));
+            memberList.AddRange(methods.Select(_ => CreateTestMethod(_, semanticModel)));
 
             var className = classSyntax.Identifier.Text;
 
