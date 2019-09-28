@@ -5,8 +5,8 @@ namespace MyProject.Services
 {
     public class HelloService
     {
-        private IBigMethod _bigMethod;
-        private IAnotherMethod _anotherMethod;
+        private readonly IBigMethod _bigMethod;
+        private readonly IAnotherMethod _anotherMethod;
 
         public HelloService(IBigMethod bigMethod, IAnotherMethod anotherMethod)
         {
@@ -14,16 +14,16 @@ namespace MyProject.Services
             _anotherMethod = anotherMethod;
         }
 
-        public void BigMethod()
+        public void SendMessage(string message)
         {
-            Console.WriteLine("Hello, World!");
+            Console.WriteLine(message);
             Boom();
         }
 
         public string AnotherMethod()
         {
-            var result = _bigMethod.BigResult();
-            _bigMethod.Hallo();
+            var result = _bigMethod.BigResult("Hallo");
+            _bigMethod.Hallo("No");
             if (_anotherMethod.IsBigResult(result))
             {
                 return result;
@@ -34,7 +34,7 @@ namespace MyProject.Services
 
         public async Task<int> BigIntMethod()
         {
-            await _bigMethod.SendAsync();
+            await _bigMethod.SendAsync("This is a Message");
             var result = await _bigMethod.GetAllAsync();
             return result;
         }

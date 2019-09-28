@@ -4,9 +4,9 @@ namespace MyProject.Services
 {
     public interface IBigMethod
     {
-        string BigResult();
-        void Hallo();
+        string BigResult(string input);
+        void Hallo(string input);
         Task<int> GetAllAsync();
-        Task SendAsync();
+        Task SendAsync(string message);
     }
 }

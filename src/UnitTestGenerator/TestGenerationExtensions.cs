@@ -84,18 +84,23 @@ namespace Opiskull.UnitTestGenerator
             return $".Returns({CreateValueFromTypeName(namedType.Name)})";
         }
 
-        public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, SemanticModel model)
+        public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax methodSyntax, ClassDeclarationSyntax classSyntax, SemanticModel model)
         {
-            var declaredSymbol = model.GetDeclaredSymbol(method);
-            var methodName = declaredSymbol.Name;
-            var className = classSyntax.Identifier.Text;
-            var mockSetups = method.CreateSetupsForMocks(classSyntax, model);
+            var method = model.GetDeclaredSymbol(methodSyntax);
+            var methodName = method.Name;
+            var className = method.ContainingType.Name;
+            var parameters = method.Parameters.Select(_ => CreateValueFromTypeName(_.Type.Name));
+            var arguments = string.Join(", ", parameters);
+
+            var returnValue = (method.ReturnType as INamedTypeSymbol).IsGenericType ? "var result = " : "";
+
+            var mockSetups = methodSyntax.CreateSetupsForMocks(classSyntax, model);
             var statements = new List<StatementSyntax>(mockSetups){
-                ParseStatement($"await {className.ToMemberName()}.{methodName}();")
+                ParseStatement($"{returnValue}await {className.ToMemberName()}.{methodName}({arguments});")
                     .AddLeadingNewLine(mockSetups.Any())
                     .AddTrailingNewLine(mockSetups.Any())
             };
-            statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
+            statements.AddRange(methodSyntax.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public async Task {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
@@ -139,20 +144,29 @@ namespace Opiskull.UnitTestGenerator
 
             var memberAccess = model.GetTypeInfo(memberAccessExpression.Expression);
             var symbolInfo = model.GetSymbolInfo(memberAccessExpression);
-            var returnValue = CreateMockReturnValue(symbolInfo.Symbol as IMethodSymbol);
-            return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}()){returnValue};");
+            var methodSymbol = (symbolInfo.Symbol as IMethodSymbol);
+            var returnValue = CreateMockReturnValue(methodSymbol);
+            var values = methodSymbol.Parameters.Select(_ => CreateValueFromTypeName(_.Type.Name));
+            var arguments = string.Join(", ", values);
+
+            return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}({arguments})){returnValue};");
         }
 
-        public static MemberDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, SemanticModel model)
+        public static MemberDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax methodSyntax, ClassDeclarationSyntax classSyntax, SemanticModel model)
         {
-            var methodName = method.Identifier.Text;
-            var mockSetups = method.CreateSetupsForMocks(classSyntax, model);
+            var method = model.GetDeclaredSymbol(methodSyntax);
+            var methodName = method.Name;
+            var mockSetups = methodSyntax.CreateSetupsForMocks(classSyntax, model);
+            var parameters = method.Parameters.Select(_ => CreateValueFromTypeName(_.Type.Name));
+            var arguments = string.Join(", ", parameters);
+
+            var result = method.ReturnsVoid ? "" : "var result = ";
             var statements = new List<StatementSyntax>(mockSetups){
-                ParseStatement($"{classSyntax.Identifier.Text.ToMemberName()}.{methodName}();")
+                ParseStatement($"{result}{classSyntax.Identifier.Text.ToMemberName()}.{methodName}({arguments});")
                     .AddTrailingNewLine(mockSetups.Any())
                     .AddLeadingNewLine(mockSetups.Any())
             };
-            statements.AddRange(method.CreateVerifyAllForMocks(classSyntax));
+            statements.AddRange(methodSyntax.CreateVerifyAllForMocks(classSyntax));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public void {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
