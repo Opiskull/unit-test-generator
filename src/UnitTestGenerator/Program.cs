@@ -21,8 +21,7 @@ namespace Opiskull.UnitTestGenerator
 
                     var model = await new ProjectLoader(pathGenerator).LoadSemanticModelAsync(filePath);
 
-                    var testFileContent = model.CreateTestFileContent();
-
+                    var outputFileContent = model.CreateTestFileContent();
                     var outputFilePath = pathGenerator.CreateTestFilePath(filePath);
 
                     if (!string.IsNullOrEmpty(opts.OutputFilePath))
@@ -32,14 +31,19 @@ namespace Opiskull.UnitTestGenerator
                     }
 
                     Console.WriteLine("--------------------------------------------------");
-                    Console.WriteLine(testFileContent);
+                    Console.WriteLine(outputFileContent);
                     Console.WriteLine("--------------------------------------------------");
 
                     if (!opts.Skip)
                     {
                         Console.WriteLine($"Output: {outputFilePath}");
                         fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(outputFilePath));
-                        fileSystem.File.WriteAllText(outputFilePath, testFileContent);
+                        if (fileSystem.File.Exists(outputFilePath) && !opts.Overwrite)
+                        {
+                            Console.Error.WriteLine("Output file exist and has not been overwritten");
+                            return;
+                        }
+                        fileSystem.File.WriteAllText(outputFilePath, outputFileContent);
                     }
                 });
         }

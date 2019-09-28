@@ -56,7 +56,7 @@ namespace Opiskull.UnitTestGenerator
         public string FindTestProject(string startDirectory, string projectName)
         {
             var projects = _fileSystem.Directory.GetFiles(startDirectory, "*.csproj", SearchOption.AllDirectories);
-            return projects.FirstOrDefault(_ => _.EndsWith(projectName + ".Test.csproj"));
+            return projects.SingleOrDefault(_ => _.EndsWith(projectName + ".Test.csproj"));
         }
 
         public string CreateTestFilePath(string inputFilePath)
@@ -76,7 +76,6 @@ namespace Opiskull.UnitTestGenerator
             var outputFolder = _fileSystem.Path.GetDirectoryName(outputPath);
 
             return Path.Combine(testProjectFolderPath, outputFolder, outputFileName);
-
         }
     }
 }
