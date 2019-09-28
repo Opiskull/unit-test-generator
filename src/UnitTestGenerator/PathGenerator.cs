@@ -33,7 +33,7 @@ namespace Opiskull.UnitTestGenerator
             }
         }
 
-        private string FindStartDirectory(string filePath)
+        private string FindRootDirectory(string filePath)
         {
             var parent = _fileSystem.Path.GetDirectoryName(filePath);
             if (parent == _fileSystem.Path.GetPathRoot(parent))
@@ -48,15 +48,35 @@ namespace Opiskull.UnitTestGenerator
             var directories = _fileSystem.Directory.GetDirectories(parent, ".git");
             if (directories.Length == 1)
             {
-                return directories.First();
+                return _fileSystem.Path.GetDirectoryName(directories.First());
             }
-            return FindStartDirectory(parent);
+            return FindRootDirectory(parent);
         }
 
         public string FindTestProject(string startDirectory, string projectName)
         {
             var projects = _fileSystem.Directory.GetFiles(startDirectory, "*.csproj", SearchOption.AllDirectories);
-            return projects.FirstOrDefault(_ => _.StartsWith(projectName));
+            return projects.FirstOrDefault(_ => _.EndsWith(projectName + ".Test.csproj"));
+        }
+
+        public string CreateTestFilePath(string inputFilePath)
+        {
+            var inputFileName = _fileSystem.Path.GetFileNameWithoutExtension(inputFilePath);
+
+            var projectFilePath = FindProjectFile(inputFilePath);
+            var projectName = _fileSystem.Path.GetFileNameWithoutExtension(projectFilePath);
+            var projectFolderPath = _fileSystem.Path.GetDirectoryName(projectFilePath);
+
+            var startDirectory = FindRootDirectory(inputFilePath);
+            var testProjectFilePath = FindTestProject(startDirectory, projectName);
+            var testProjectFolderPath = _fileSystem.Path.GetDirectoryName(testProjectFilePath);
+
+            var outputFileName = $"{inputFileName}Test.cs";
+            var outputPath = inputFilePath.Replace(projectFolderPath, "").Remove(0, 1);
+            var outputFolder = _fileSystem.Path.GetDirectoryName(outputPath);
+
+            return Path.Combine(testProjectFolderPath, outputFolder, outputFileName);
+
         }
     }
 }

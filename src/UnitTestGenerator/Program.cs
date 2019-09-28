@@ -1,11 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using CommandLine;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Opiskull.UnitTestGenerator
 {
@@ -19,19 +15,31 @@ namespace Opiskull.UnitTestGenerator
                     var fileSystem = new FileSystem();
                     var pathGenerator = new PathGenerator(fileSystem);
 
-                    var filePath = fileSystem.Path.GetFullPath(opts.FileName);
+                    var filePath = fileSystem.Path.GetFullPath(opts.InputFilePath);
+
+                    Console.WriteLine($"Input: {filePath}");
+
                     var model = await new ProjectLoader(pathGenerator).LoadSemanticModelAsync(filePath);
 
-                    var testFileContent = new TestFileGenerator(model).CreateTestFile();
+                    var testFileContent = model.CreateTestFileContent();
 
-                    if (!string.IsNullOrEmpty(opts.OutputFileName))
+                    var outputFilePath = pathGenerator.CreateTestFilePath(filePath);
+
+                    if (!string.IsNullOrEmpty(opts.OutputFilePath))
                     {
-                        Directory.CreateDirectory(Path.GetDirectoryName(opts.OutputFileName));
-                        File.WriteAllText(opts.OutputFileName, testFileContent);
+                        outputFilePath = fileSystem.Path.GetFullPath(opts.OutputFilePath);
+                        Console.WriteLine($"Overwriting Output Path: {outputFilePath}");
                     }
-                    else
+
+                    Console.WriteLine("--------------------------------------------------");
+                    Console.WriteLine(testFileContent);
+                    Console.WriteLine("--------------------------------------------------");
+
+                    if (!opts.Skip)
                     {
-                        Console.WriteLine(testFileContent);
+                        Console.WriteLine($"Output: {outputFilePath}");
+                        fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(outputFilePath));
+                        fileSystem.File.WriteAllText(outputFilePath, testFileContent);
                     }
                 });
         }

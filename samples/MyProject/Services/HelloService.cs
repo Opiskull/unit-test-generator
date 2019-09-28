@@ -34,6 +34,7 @@ namespace MyProject.Services
 
         public async Task<int> BigIntMethod()
         {
+            await _bigMethod.SendAsync();
             var result = await _bigMethod.GetAllAsync();
             return result;
         }

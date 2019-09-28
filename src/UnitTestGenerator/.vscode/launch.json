@@ -10,7 +10,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${workspaceFolder}/bin/Debug/netcoreapp2.2/UnitTestGenerator.dll",
-      "args": ["../../samples/MyProject/Services/HelloService.cs"],
+      "args": ["../../samples/MyProject/Services/HelloService.cs", "--skip"],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "stopAtEntry": false

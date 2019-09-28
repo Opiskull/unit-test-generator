@@ -7,5 +7,6 @@ namespace MyProject.Services
         string BigResult();
         void Hallo();
         Task<int> GetAllAsync();
+        Task SendAsync();
     }
 }

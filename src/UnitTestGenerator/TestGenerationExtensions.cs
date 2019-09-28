@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,7 +16,12 @@ namespace Opiskull.UnitTestGenerator
             return (type as IdentifierNameSyntax).Identifier.Text;
         }
 
-        public static SyntaxNode CreateTestFile(this CompilationUnitSyntax compilationUnit)
+        public static string CreateTestFileContent(this SemanticModel model)
+        {
+            return model.SyntaxTree.GetCompilationUnitRoot().CreateTestFileContent(model);
+        }
+
+        public static string CreateTestFileContent(this CompilationUnitSyntax compilationUnit, SemanticModel model)
         {
             var namespaceName = compilationUnit.Members.OfType<NamespaceDeclarationSyntax>().FirstOrDefault().Name.ToString();
             var usings = new List<string>(compilationUnit.Usings.Select(_ => _.Name.ToString()));
@@ -30,15 +37,59 @@ namespace Opiskull.UnitTestGenerator
                         NamespaceDeclaration(
                             ParseName(namespaceName.ToTestNamespace()))
                             .WithMembers(
-                                SingletonList<MemberDeclarationSyntax>(classSyntax.CreateTestClass()))))
-                .ApplyFormat();
+                                SingletonList<MemberDeclarationSyntax>(classSyntax.CreateTestClass(model)))))
+                .ApplyFormat()
+                .ToString();
         }
 
-        public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
+        private static string CreateValueFromTypeName(string typeName)
         {
-            var methodName = method.Identifier.Text;
+            if (typeName == typeof(int).Name || typeName == typeof(long).Name)
+            {
+                return "1";
+            }
+            if (typeName == typeof(string).Name)
+            {
+                return "\"test-value\"";
+            }
+            if (typeName == typeof(bool).Name)
+            {
+                return "true";
+            }
+            return "null";
+        }
+
+        private static string CreateMockReturnValue(IMethodSymbol methodSymbol)
+        {
+            var type = methodSymbol.ReturnType;
+            var namedType = type as INamedTypeSymbol;
+
+            if (namedType.Name == typeof(Task).Name)
+            {
+                if (namedType.IsGenericType)
+                {
+                    var typeArgument = namedType.TypeArguments.FirstOrDefault();
+                    if (typeArgument != null && typeArgument.IsValueType)
+                    {
+                        var typeName = (typeArgument as INamedTypeSymbol).ConstructedFrom.Name;
+                        return $".ReturnsAsync({CreateValueFromTypeName(typeName)})";
+                    }
+                }
+                return ".Returns(Task.CompletedTask)";
+            }
+            if (namedType.Name == "Void")
+            {
+                return "";
+            }
+            return $".Returns({CreateValueFromTypeName(namedType.Name)})";
+        }
+
+        public static MethodDeclarationSyntax CreateAsyncTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, SemanticModel model)
+        {
+            var declaredSymbol = model.GetDeclaredSymbol(method);
+            var methodName = declaredSymbol.Name;
             var className = classSyntax.Identifier.Text;
-            var mockSetups = method.CreateSetupsForMocks(classSyntax, ".Returns(Task.CompletedTask)");
+            var mockSetups = method.CreateSetupsForMocks(classSyntax, model);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"await {className.ToMemberName()}.{methodName}();")
                     .AddLeadingNewLine(mockSetups.Any())
@@ -49,14 +100,14 @@ namespace Opiskull.UnitTestGenerator
             return methodDeclaration.WithBody(Block(statements));
         }
 
-        public static IEnumerable<StatementSyntax> CreateSetupsForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, string returnValue = "")
+        public static IEnumerable<StatementSyntax> CreateSetupsForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, SemanticModel model)
         {
             var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
             var expressions = method.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
             return expressions
                 // Select mockable expressions
                 .Where(_ => fields.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text))
-                .Select(_ => _.CreateMockSetup(fields, returnValue));
+                .Select(_ => _.CreateMockSetup(fields, model));
         }
 
         public static IEnumerable<StatementSyntax> CreateVerifyAllForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
@@ -79,19 +130,23 @@ namespace Opiskull.UnitTestGenerator
             return $"{memberType.ToMemberName()}.VerifyAll();";
         }
 
-        public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields, string returnValue = "")
+        public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields, SemanticModel model)
         {
             var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
             var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
             var memberType = field.Declaration.Type.GetTypeName();
             var methodName = memberAccessExpression.Name.Identifier.Text;
+
+            var memberAccess = model.GetTypeInfo(memberAccessExpression.Expression);
+            var symbolInfo = model.GetSymbolInfo(memberAccessExpression);
+            var returnValue = CreateMockReturnValue(symbolInfo.Symbol as IMethodSymbol);
             return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}()){returnValue};");
         }
 
-        public static MemberDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
+        public static MemberDeclarationSyntax CreateVoidTestMethod(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, SemanticModel model)
         {
             var methodName = method.Identifier.Text;
-            var mockSetups = method.CreateSetupsForMocks(classSyntax);
+            var mockSetups = method.CreateSetupsForMocks(classSyntax, model);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"{classSyntax.Identifier.Text.ToMemberName()}.{methodName}();")
                     .AddTrailingNewLine(mockSetups.Any())
@@ -125,7 +180,7 @@ namespace Opiskull.UnitTestGenerator
             return ParseMemberDeclaration($"private readonly {className} {className.ToMemberName()};");
         }
 
-        public static ClassDeclarationSyntax CreateTestClass(this ClassDeclarationSyntax classSyntax)
+        public static ClassDeclarationSyntax CreateTestClass(this ClassDeclarationSyntax classSyntax, SemanticModel semanticModel)
         {
             var memberList = new List<MemberDeclarationSyntax>();
             var constructor = classSyntax.Members.OfType<ConstructorDeclarationSyntax>().FirstOrDefault();
@@ -136,8 +191,8 @@ namespace Opiskull.UnitTestGenerator
             memberList.Add(classSyntax.CreateConstructor());
 
             var methods = classSyntax.Members.OfType<MethodDeclarationSyntax>().Where(_ => _.Modifiers.Any(SyntaxKind.PublicKeyword));
-            memberList.AddRange(methods.Where(_ => _.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateAsyncTestMethod(classSyntax)));
-            memberList.AddRange(methods.Where(_ => !_.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateVoidTestMethod(classSyntax)));
+            memberList.AddRange(methods.Where(_ => _.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateAsyncTestMethod(classSyntax, semanticModel)));
+            memberList.AddRange(methods.Where(_ => !_.Modifiers.Any(SyntaxKind.AsyncKeyword)).Select(_ => _.CreateVoidTestMethod(classSyntax, semanticModel)));
 
             var className = classSyntax.Identifier.Text;
 

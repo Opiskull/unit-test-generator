@@ -7,10 +7,13 @@ namespace Opiskull.UnitTestGenerator
         [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
         public bool Verbose { get; set; }
 
+        [Option('s', "skip", Required = false, HelpText = "Skip output of filename.")]
+        public bool Skip { get; set; }
+
         [Value(0, Required = true, HelpText = "Input filename.")]
-        public string FileName { get; set; }
+        public string InputFilePath { get; set; }
 
         [Value(1, Required = false, HelpText = "Output filename.")]
-        public string OutputFileName { get; set; }
+        public string OutputFilePath { get; set; }
     }
 }
