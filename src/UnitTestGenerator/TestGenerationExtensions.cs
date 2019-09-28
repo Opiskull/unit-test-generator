@@ -19,11 +19,7 @@ namespace Opiskull.UnitTestGenerator
 
         public static string CreateTestFileContent(this SemanticModel model)
         {
-            return model.SyntaxTree.GetCompilationUnitRoot().CreateTestFileContent(model);
-        }
-
-        public static string CreateTestFileContent(this CompilationUnitSyntax compilationUnit, SemanticModel model)
-        {
+            var compilationUnit = model.SyntaxTree.GetCompilationUnitRoot();
             var namespaceName = compilationUnit.Members.OfType<NamespaceDeclarationSyntax>().FirstOrDefault().Name.ToString();
             var usings = new List<string>(compilationUnit.Usings.Select(_ => _.Name.ToString()));
             var classSyntax = compilationUnit.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
@@ -63,7 +59,7 @@ namespace Opiskull.UnitTestGenerator
                 var arrayType = typeSymbol as IArrayTypeSymbol;
                 return $"new {arrayType.ElementType.Name}[0]";
             }
-            if (typeName == typeof(IEnumerable).Name)
+            if (typeName == typeof(IEnumerable).Name || typeName == typeof(List<>).Name)
             {
                 var genericType = typeSymbol as INamedTypeSymbol;
                 return $"new List<{genericType.TypeArguments.First().Name}>()";
@@ -104,44 +100,46 @@ namespace Opiskull.UnitTestGenerator
 
             var returnValue = !method.ReturnsVoid || ((method.ReturnType as INamedTypeSymbol).IsGenericType) ? "var result = " : "";
 
-            var mockSetups = methodDeclarationSyntax.CreateSetupsForMocks(classSyntax, model);
+            var mockSetups = methodDeclarationSyntax.CreateMockSetups(model);
             var statements = new List<StatementSyntax>(mockSetups){
                 ParseStatement($"{returnValue}{(method.IsAsync ? "await" : "")} {className.ToMemberName()}.{methodName}({arguments});")
                     .AddLeadingNewLine(mockSetups.Any())
                     .AddTrailingNewLine(mockSetups.Any())
             };
-            statements.AddRange(methodDeclarationSyntax.CreateVerifyAllForMocks(classSyntax));
+            statements.AddRange(methodDeclarationSyntax.CreateVerifyAllForMocks(model));
             var methodDeclaration = (ParseMemberDeclaration($"[Fact]public {(method.IsAsync ? "async Task" : "void")} {methodName.ToTestMethodName()}()") as MethodDeclarationSyntax);
             return methodDeclaration.WithBody(Block(statements));
         }
 
-        public static IEnumerable<StatementSyntax> CreateSetupsForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax, SemanticModel model)
+        public static IEnumerable<StatementSyntax> CreateMockSetups(this MethodDeclarationSyntax methodSyntax, SemanticModel model)
         {
-            var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
-            var expressions = method.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+            var method = model.GetDeclaredSymbol(methodSyntax);
+            var fields = method.ContainingType.GetMembers().OfType<IFieldSymbol>();
+            var expressions = methodSyntax.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
             return expressions
                 // Select mockable expressions
-                .Where(_ => fields.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text))
+                .Where(_ => fields.Any(m => m.Name == (_.Expression as IdentifierNameSyntax).Identifier.Text))
                 .Select(_ => _.CreateMockSetup(fields, model));
         }
 
-        public static IEnumerable<StatementSyntax> CreateVerifyAllForMocks(this MethodDeclarationSyntax method, ClassDeclarationSyntax classSyntax)
+        public static IEnumerable<StatementSyntax> CreateVerifyAllForMocks(this MethodDeclarationSyntax methodSyntax, SemanticModel model)
         {
-            var fields = classSyntax.Members.OfType<FieldDeclarationSyntax>();
-            var expressions = method.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
+            var method = model.GetDeclaredSymbol(methodSyntax);
+            var fields = method.ContainingType.GetMembers().OfType<IFieldSymbol>();
+            var expressions = methodSyntax.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
             return expressions
                 // Select mockable expressions
-                .Where(_ => fields.Any(m => m.Declaration.Variables.First().Identifier.Text == (_.Expression as IdentifierNameSyntax).Identifier.Text))
+                .Where(_ => fields.Any(m => m.Name == (_.Expression as IdentifierNameSyntax).Identifier.Text))
                 .Select(_ => _.CreateVerifyAll(fields))
                 .Distinct()
                 .Select(_ => ParseStatement(_));
         }
 
-        private static string CreateVerifyAll(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields)
+        private static string CreateVerifyAll(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<IFieldSymbol> availableFields)
         {
             var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
-            var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
-            var memberType = field.Declaration.Type.GetTypeName();
+            var field = availableFields.FirstOrDefault(_ => _.Name == memberName);
+            var memberType = field.Type.Name;
             return $"{memberType.ToMemberName()}.VerifyAll();";
         }
 
@@ -150,20 +148,16 @@ namespace Opiskull.UnitTestGenerator
             return string.Join(", ", parameters.Select(_ => ToMockedValue(_.Type)));
         }
 
-        public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<FieldDeclarationSyntax> availableFields, SemanticModel model)
+        public static StatementSyntax CreateMockSetup(this MemberAccessExpressionSyntax memberAccessExpression, IEnumerable<IFieldSymbol> availableFields, SemanticModel model)
         {
-            var memberName = (memberAccessExpression.Expression as IdentifierNameSyntax).Identifier.Text;
-            var field = availableFields.FirstOrDefault(_ => _.Declaration.Variables.First().Identifier.Text == memberName);
-            var memberType = field.Declaration.Type.GetTypeName();
-            var methodName = memberAccessExpression.Name.Identifier.Text;
+            var memberName = model.GetSymbolInfo(memberAccessExpression.Expression).Symbol.Name;
+            var fieldName = availableFields.FirstOrDefault(_ => _.Name == memberName).Type.Name;
+            var methodSymbol = model.GetSymbolInfo(memberAccessExpression).Symbol as IMethodSymbol;
 
-            var memberAccess = model.GetTypeInfo(memberAccessExpression.Expression);
-            var symbolInfo = model.GetSymbolInfo(memberAccessExpression);
-            var methodSymbol = (symbolInfo.Symbol as IMethodSymbol);
             var returnValue = ToMockReturnValue(methodSymbol);
             var arguments = methodSymbol.Parameters.ToTypedArguments();
 
-            return ParseStatement($"{memberType.ToMemberName()}.Setup(_ => _.{methodName}({arguments})){returnValue};");
+            return ParseStatement($"{fieldName.ToMemberName()}.Setup(_ => _.{methodSymbol.Name}({arguments})){returnValue};");
         }
 
         public static MemberDeclarationSyntax CreateMockAsField(this TypeSyntax type)
