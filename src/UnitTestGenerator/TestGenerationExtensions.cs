@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -57,16 +58,26 @@ namespace Opiskull.UnitTestGenerator
             {
                 return "true";
             }
+            if (typeSymbol.TypeKind == TypeKind.Array)
+            {
+                var arrayType = typeSymbol as IArrayTypeSymbol;
+                return $"new {arrayType.ElementType.Name}[0]";
+            }
+            if (typeName == typeof(IEnumerable).Name)
+            {
+                var genericType = typeSymbol as INamedTypeSymbol;
+                return $"new List<{genericType.TypeArguments.First().Name}>()";
+            }
             return "null";
         }
 
         private static string ToMockReturnValue(IMethodSymbol methodSymbol)
         {
             var returnType = methodSymbol.ReturnType;
-            var namedType = returnType as INamedTypeSymbol;
 
-            if (namedType.Name == typeof(Task).Name)
+            if (returnType.Name == typeof(Task).Name)
             {
+                var namedType = returnType as INamedTypeSymbol;
                 if (namedType.IsGenericType)
                 {
                     var typeArgument = namedType.TypeArguments.FirstOrDefault();
@@ -77,11 +88,11 @@ namespace Opiskull.UnitTestGenerator
                 }
                 return ".Returns(Task.CompletedTask)";
             }
-            if (namedType.Name == "Void")
+            if (returnType.Name == "Void")
             {
                 return "";
             }
-            return $".Returns({namedType.ToMockedValue()})";
+            return $".Returns({returnType.ToMockedValue()})";
         }
 
         public static MethodDeclarationSyntax CreateTestMethod(this MethodDeclarationSyntax methodDeclarationSyntax, ClassDeclarationSyntax classSyntax, SemanticModel model)

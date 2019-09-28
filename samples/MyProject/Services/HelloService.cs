@@ -20,6 +20,12 @@ namespace MyProject.Services
             Boom();
         }
 
+        public string[] GetAll(string search)
+        {
+            var bla = _anotherMethod.GetItems(search);
+            return _anotherMethod.GetAllMethods();
+        }
+
         public string AnotherMethod()
         {
             var result = _bigMethod.BigResult("Hallo");
